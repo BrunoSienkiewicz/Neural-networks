@@ -20,23 +20,21 @@ labels_to_num = {
 }
 
 
-def train_valid_split(data, target, val_ratio=0.2) -> (torch.utils.data.Dataset, torch.utils.data.Dataset):
+def train_valid_split(data, val_ratio=0.2):
     train = data.sample(frac=1 - val_ratio, random_state=200)
     val = data.drop(train.index)
+    return train, val
 
-    train_x = np.array(train.drop(target, axis=1).values, dtype=np.float32)
-    train_y = np.array(train[target].values, dtype=np.float32)
-    val_x = np.array(val.drop(target, axis=1).values, dtype=np.float32)
-    val_y = np.array(val[target].values, dtype=np.float32)
 
-    train_torch_x = torch.from_numpy(train_x).clone().detach().float()
-    train_torch_y = torch.from_numpy(train_y).clone().detach().float()
-    val_torch_x = torch.from_numpy(val_x).clone().detach().float()
-    val_torch_y = torch.from_numpy(val_y).clone().detach().float()
-    train_dataset = torch.utils.data.TensorDataset(train_torch_x, train_torch_y)
-    val_dataset = torch.utils.data.TensorDataset(val_torch_x, val_torch_y)
+def data_to_dataset(data, target) -> torch.utils.data.Dataset:
+    x = np.array(data.drop(target, axis=1).values, dtype=np.float32)
+    y = np.array(data[target].values, dtype=np.float32)
 
-    return train_dataset, val_dataset
+    torch_x = torch.from_numpy(x).clone().detach().float()
+    torch_y = torch.from_numpy(y).clone().detach().float()
+    dataset = torch.utils.data.TensorDataset(torch_x, torch_y)
+
+    return dataset
 
 
 def get_dummies(data, columns):
