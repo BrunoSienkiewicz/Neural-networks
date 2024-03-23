@@ -44,12 +44,21 @@ def get_dummies(data, columns):
     data = pd.concat([data, cat_values], axis=1)
     return data
 
+
 def output_to_labels(data, target):
     data[target+"_label"] = data[target].apply(lambda x: "cheap" if labels["cheap"](x) else "average" if labels["average"](x) else "expensive")
     data = data.drop(target, axis=1)
     data.rename(columns={target+"_label": target}, inplace=True)
     data[target] = data[target].apply(lambda x: labels_to_num[x])
     return data
+
+
+def regression_to_labels(y: torch.Tensor):
+    y = y.clone().detach().numpy()
+    y = np.array([labels_to_num["cheap"] if labels["cheap"](x) else labels_to_num["average"] if labels["average"](x) else labels_to_num["expensive"] for x in y])
+    y = torch.from_numpy(y).clone().detach().float()
+    return y
+
 
 def equalize_classes(df, target):
     smote = SMOTE()
@@ -59,3 +68,12 @@ def equalize_classes(df, target):
     df = pd.concat([x_smote, y_smote], axis=1)
     return df
 
+
+def remove_corr_features(data, target, threshold=0.9):
+    corr_matrix = data.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
+    if target in to_drop:
+        to_drop.remove(target)
+    data = data.drop(to_drop, axis=1)
+    return data

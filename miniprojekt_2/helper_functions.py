@@ -1,10 +1,11 @@
 import torch
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from tqdm import tqdm
 
 
-def train_model(model, train, valid, criterion, optimizer, eval_func, batch_size=100, num_epochs=1000, verbose=True, epoch_interval=100):
+def train_model(model, train, valid, criterion, optimizer, eval_func, batch_size=100, num_epochs=1000, verbose=True, epoch_interval=100, device=torch.device('cuda')):
     train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
 
     iters_list = []
@@ -17,6 +18,8 @@ def train_model(model, train, valid, criterion, optimizer, eval_func, batch_size
         _range = tqdm(_range)
     for epoch in _range:
         for i, (x, y) in enumerate(train_loader):
+            x = x.to(device)
+            y = y.to(device)
             model.train()
             y_pred = model(x)
             y_pred = y_pred.squeeze()
@@ -34,9 +37,12 @@ def train_model(model, train, valid, criterion, optimizer, eval_func, batch_size
     return iters_list, loss_list, train_eval_list, valid_eval_list
 
 
-def plot_training(iters, loss, train_eval, valid_eval):
+def plot_training(iters, loss, train_eval, valid_eval, ax=None):
 
-    fig, ax1 = plt.subplots()
+    if ax is None:
+        fig, ax1 = plt.subplots()
+    else:
+        ax1 = ax
 
     color = 'tab:red'
     ax1.set_xlabel('Epoch')
@@ -51,24 +57,60 @@ def plot_training(iters, loss, train_eval, valid_eval):
     ax2.plot(iters, valid_eval, color=color, linestyle='solid', label='Validation')
     ax2.tick_params(axis='y', labelcolor=color)
 
+    if ax is None:
+        fig.tight_layout()
+        plt.legend()
+        plt.show()
+
+
+def get_confusion_matrix(model, data, device=torch.device('cuda')):
+    model.eval()
+    for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+        x = x.to(device)
+        y = y.to(device)
+        y_pred = model(x)
+        y_pred = torch.round(y_pred)
+        y = y.view_as(y_pred)
+        confusion_matrix = torch.zeros(3, 3)
+        for i in range(3):
+            for j in range(3):
+                confusion_matrix[i, j] = torch.sum((y == i) & (y_pred == j))
+    model.train()
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    sns.heatmap(confusion_matrix, annot=True, ax=ax, fmt='g')
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    fig.suptitle("Confusion matrix")
     fig.tight_layout()
     plt.show()
 
 
-def get_mse(model, data):
+def get_mse(model, data, device=torch.device('cuda')):
     model.eval()
     for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+        x = x.to(device)
+        y = y.to(device)
         y_pred = model(x)
         mse = torch.mean((y_pred - y) ** 2)
+    model.train()
     return mse.item()
 
-def get_accuracy(model, data):
+def get_accuracy(model, data, device=torch.device('cuda')):
     correct = 0
     total = 0
     model.eval()
     for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+        x = x.to(device)
+        y = y.to(device)
         output = model(x)
         y_pred = torch.round(output)
         correct = y_pred.eq(y.view_as(y_pred)).sum().item()
         total = y_pred.shape[0]
+    model.train()
     return correct / total
+
+
+def get_overfitting(model, train_data, valid_data, eval_func):
+    train_eval = eval_func(model, train_data)
+    valid_eval = eval_func(model, valid_data)
+    return train_eval - valid_eval
