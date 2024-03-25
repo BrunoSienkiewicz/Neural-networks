@@ -112,20 +112,21 @@ def get_accuracy(model, data, device=torch.device('cuda')):
     else:
       return get_accuracy_regression(mmodel,data)
 
-def get_accuracy_regression(model, data, device=torch.device('cuda')):
+
+def get_accuracy_regression(model, data):
     correct = 0
     total = 0
     model.eval()
     for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
-        x = x.to(device)
-        y = y.to(device)
         output = model(x)
         for prediction, true_value in zip(output, y):
-            if true_value==0 and 100000 >= prediction :
+            print(true_value, prediction)
+
+            if true_value <=100000 and 100000 >= prediction :
                 correct += 1
-            elif true_value==1 and 100000 <= prediction and prediction<350000:
+            elif true_value>100000 and true_value<350000 and 100000 <= prediction and prediction<350000:
                 correct += 1
-            elif true_value==2 and 350000 >= prediction :
+            elif true_value>=350000 and 350000 >= prediction :
                 correct += 1
         total += y.shape[0]
     return correct / total
