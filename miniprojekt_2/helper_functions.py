@@ -65,6 +65,7 @@ def plot_training(iters, loss, train_eval, valid_eval, ax=None):
 
 def get_confusion_matrix(model, data, device=torch.device('cuda')):
     model.eval()
+    final_score=0
     for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
         x = x.to(device)
         y = y.to(device)
@@ -73,8 +74,11 @@ def get_confusion_matrix(model, data, device=torch.device('cuda')):
         y = y.view_as(y_pred)
         confusion_matrix = torch.zeros(3, 3)
         for i in range(3):
+            present_score=0
             for j in range(3):
                 confusion_matrix[i, j] = torch.sum((y == i) & (y_pred == j))
+                present_score+=confusion_matrix[i,j]
+            final_score+=min(1,confusion_matrix[i,i]/present_score)
     model.train()
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     sns.heatmap(confusion_matrix, annot=True, ax=ax, fmt='g')
@@ -83,6 +87,7 @@ def get_confusion_matrix(model, data, device=torch.device('cuda')):
     fig.suptitle("Confusion matrix")
     fig.tight_layout()
     plt.show()
+    print(final_score/3)
 
 
 def get_mse(model, data, device=torch.device('cuda')):
