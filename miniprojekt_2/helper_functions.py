@@ -107,7 +107,29 @@ def get_accuracy(model, data, device=torch.device('cuda')):
         correct = y_pred.eq(y.view_as(y_pred)).sum().item()
         total = y_pred.shape[0]
     model.train()
+    if ((correct / total)>0.20):
+      return max(correct / total)
+    else:
+      return get_accuracy_regression(mmodel,data)
+
+def get_accuracy_regression(model, data, device=torch.device('cuda')):
+    correct = 0
+    total = 0
+    model.eval()
+    for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+        x = x.to(device)
+        y = y.to(device)
+        output = model(x)
+        for prediction, true_value in zip(output, y):
+            if true_value==0 and 100000 >= prediction :
+                correct += 1
+            elif true_value==1 and 100000 <= prediction and prediction<350000:
+                correct += 1
+            elif true_value==2 and 350000 >= prediction :
+                correct += 1
+        total += y.shape[0]
     return correct / total
+
 
 
 def get_overfitting(model, train_data, valid_data, eval_func):
