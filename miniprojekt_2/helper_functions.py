@@ -1,6 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 
 from tqdm import tqdm
 
@@ -18,6 +19,39 @@ def train_model(model, train, valid, criterion, optimizer, eval_func, batch_size
         _range = tqdm(_range)
     for epoch in _range:
         for i, (x, y) in enumerate(train_loader):
+            x = x.to(device)
+            y = y.to(device)
+            model.train()
+            y_pred = model(x)
+            y_pred = y_pred.squeeze()
+            loss = criterion(y_pred, y)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+        if epoch % epoch_interval == 0:
+            iters_list.append(epoch)
+            loss_list.append(loss.item())
+            train_eval_list.append(eval_func(model, train))
+            valid_eval_list.append(eval_func(model, valid))
+
+    return iters_list, loss_list, train_eval_list, valid_eval_list
+
+
+def train_model_w(model, train, valid, criterion, optimizer, eval_func, batch_size=100, num_epochs=1000, verbose=True, epoch_interval=100, device=torch.device('cuda')):
+    train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
+
+    iters_list = []
+    loss_list = []
+    train_eval_list = []
+    valid_eval_list = []
+
+    _range = range(num_epochs)
+    if verbose:
+        _range = tqdm(_range)
+    for epoch in _range:
+        for i, (x, y) in enumerate(train_loader):
+            y = y.type(torch.LongTensor)
             x = x.to(device)
             y = y.to(device)
             model.train()
@@ -90,6 +124,49 @@ def get_confusion_matrix(model, data, device=torch.device('cuda')):
     print(final_score/3)
 
 
+def get_confusion_matrix_w(model, data):
+    model.eval()
+    with torch.no_grad():
+        for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+            x, y = x.cuda(), y.cuda()
+            outputs = model(x)
+            _, predicted = torch.max(outputs.data, 1)
+            confusion = pd.crosstab(y.cpu().numpy(), predicted.cpu().numpy(), rownames=['Actual'], colnames=['Predicted'])
+            sns.heatmap(confusion, annot=True, fmt='d')
+            plt.show()
+    model.train()
+
+
+def get_balanced_accuracy(model, data, device=torch.device('cuda')):
+    model.eval()
+    with torch.no_grad():
+        for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+            x, y = x.to(device), y.to(device)
+            outputs = model(x)
+            _, predicted = torch.max(outputs.data, 1)
+            confusion = pd.crosstab(y.cpu().numpy(), predicted.cpu().numpy(), rownames=['Actual'], colnames=['Predicted'])
+            balanced_accuracy = 0
+            for i in range(confusion.shape[0]):
+                balanced_accuracy += confusion.iloc[i, i] / confusion.iloc[i, :].sum()
+            balanced_accuracy /= confusion.shape[0]
+    model.train()
+    return balanced_accuracy
+
+
+def accuracy_weighted(model, data):
+    correct = 0
+    total = 0
+    model.eval()
+    with torch.no_grad():
+        for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
+            x, y = x.cuda(), y.cuda()
+            outputs = model(x)
+            _, predicted = torch.max(outputs.data, 1)
+            total += y.size(0)
+            correct += (predicted == y).sum().item()
+    model.train()
+    return correct / total
+
 def get_mse(model, data, device=torch.device('cuda')):
     model.eval()
     for x, y in torch.utils.data.DataLoader(data, batch_size=len(data)):
@@ -115,7 +192,7 @@ def get_accuracy(model, data, device=torch.device('cuda')):
     if ((correct / total)>0.20):
       return max(correct / total)
     else:
-      return get_accuracy_regression(mmodel,data)
+      return get_accuracy_regression(model,data)
 
 
 def get_accuracy_regression(model, data):

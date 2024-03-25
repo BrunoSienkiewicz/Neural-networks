@@ -100,3 +100,48 @@ class NetEmbedding(torch.nn.Module):
         out = self.relu(out)
         out = self.fc2(out)
         return out
+
+
+class NetFinal(torch.nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, device=torch.device('cuda')):
+        super(NetFinal, self).__init__()
+        self.fc1 = torch.nn.Linear(input_size, hidden_size)
+        self.bn1 = torch.nn.BatchNorm1d(hidden_size)
+        self.relu_1 = torch.nn.ReLU()
+        self.d1 = torch.nn.Dropout(p=0.3)
+        self.fc2 = torch.nn.Linear(hidden_size, hidden_size)
+        self.bn2 = torch.nn.BatchNorm1d(hidden_size)
+        self.relu_2 = torch.nn.ReLU()
+        self.d2 = torch.nn.Dropout(p=0.3)
+        self.fc3 = torch.nn.Linear(hidden_size, hidden_size)
+        self.bn3 = torch.nn.BatchNorm1d(hidden_size)
+        self.relu_3 = torch.nn.ReLU()
+        self.d3 = torch.nn.Dropout(p=0.3)
+        self.fc4 = torch.nn.Linear(hidden_size, hidden_size)
+        self.bn4 = torch.nn.BatchNorm1d(hidden_size)
+        self.relu_4 = torch.nn.ReLU()
+        self.d4 = torch.nn.Dropout(p=0.3)
+        self.fc5 = torch.nn.Linear(hidden_size, hidden_size)
+        self.relu_5 = torch.nn.ReLU()
+        self.out = torch.nn.Linear(hidden_size, output_size)
+        self = self.to(device)
+ 
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.bn1(x)
+        x = self.relu_1(x)
+        x = self.d1(x)
+        x = self.fc2(x)
+        x = self.bn2(x)
+        x = self.relu_2(x)
+        x = self.d2(x)
+        x = self.fc3(x)
+        x = self.relu_3(x)
+        x = self.d3(x)
+        x = self.fc4(x)
+        x = self.relu_4(x)
+        x = self.d4(x)
+        x = self.fc5(x)
+        x = self.relu_5(x)
+        x = self.out(x)
+        return x
