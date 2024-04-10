@@ -16,7 +16,7 @@ class Net(nn.Module):
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv2d(6, 16, 5)
         self.pool2 = nn.MaxPool2d(2)
-        self.fc1 = nn.Linear(16 * 5 * 5, hidden_size)
+        self.fc1 = nn.Linear(16 * 13 * 13, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, num_classes)
 
