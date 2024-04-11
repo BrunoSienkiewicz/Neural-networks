@@ -16,18 +16,19 @@ def get_accuracy(model, data, device):
     
 def get_balanced_accuracy(model, data, classes, device):
     model.eval()
-    correct_labels = {i : 0 for i in range(len(classes))}
-    total_labels = {i : 0 for i in range(len(classes))}
+    # calculate accuracy for each class
+    class_correct = torch.zeros(len(classes))
+    class_total = torch.zeros(len(classes))
     with torch.no_grad():
         for images, labels in data:
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             _, predicted = torch.max(outputs, dim=1)
-            for i in range(len(classes)):
-                correct_labels[i] += int((predicted == labels).sum())
-                total_labels[i] += int((labels == i).sum())
-    balanced_accuracy = {i : correct_labels[i]/total_labels[i] for i in range(len(classes))}
-    return balanced_accuracy, sum(balanced_accuracy.values()) / len(balanced_accuracy)
+            for i in range(len(images)):
+                class_correct[labels[i]] += int(predicted[i] == labels[i])
+                class_total[labels[i]] += 1
+    class_acc = class_correct / class_total
+    return class_acc.mean().item(), class_acc
 
     
 def get_confusion_matrix(model, data, classes, device):

@@ -11,10 +11,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def load_data(data_dir):
-    transform = transforms.Compose(
-        [transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+def load_data(data_dir, transform=None):
+    if transform is None:
+        transform = transforms.Compose(
+            [transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     dataset = torchvision.datasets.ImageFolder(root=data_dir, transform=transform)
     return dataset

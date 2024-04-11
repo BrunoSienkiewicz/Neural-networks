@@ -37,11 +37,11 @@ class CustomNet(nn.Module):
     
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=6, kernel_size=kernel_size, stride=stride, padding=padding)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.convs = nn.ModuleList([nn.Conv2d(6, 16, kernel_size) for _ in range(n_convs)])
+        self.convs = nn.ModuleList([nn.Conv2d(6 if i == 0 else 16, 16, kernel_size) for i in range(n_convs)])
         self.bns = nn.ModuleList([nn.BatchNorm2d(16) for _ in range(n_convs)])
 
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(16 * 13 * 13, hidden_size)
+        self.fc1 = nn.Linear(256, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, num_classes)
         
