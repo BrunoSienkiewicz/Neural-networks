@@ -10,6 +10,18 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
+class FastDataset(torch.utils.data.Dataset):
+    def __init__(self, data, labels):
+        self.data = data
+        self.labels = labels
+        
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+    
+
 def train_model(model, train_loader, val_loader, criterion, optimizer, eval_fn, device, num_epochs=5, verbose=True):
     train_eval_hist = []
     val_eval_hist = []
