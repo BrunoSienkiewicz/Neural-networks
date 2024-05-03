@@ -1,10 +1,21 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+import torchvision.transforms as transforms
+from tqdm import tqdm
+from scipy import linalg
+
+
 class Evaluator(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
+    def __init__(self, input_dim, hidden_dim, n_classes=10):
         super(Evaluator, self).__init__()
 
         self.fc_1 = nn.Linear(input_dim, hidden_dim)
         self.fc_2 = nn.Linear(hidden_dim, 50)
-        self.fc_out  = nn.Linear(50, 10)
+        self.fc_out  = nn.Linear(50, n_classes)
         
         self.LeakyReLU = nn.LeakyReLU(0.2)
         
@@ -19,6 +30,14 @@ class Evaluator(nn.Module):
         x = self.get_features(x)
         x = self.fc_out(x)
         return x
+
+    def evaluate(self, model, orig_data, device, latent_dim=32, n_gen=100):
+        with torch.no_grad():
+            fixed_noise = torch.randn(n_gen, latent_dim, device=device)
+            generations = model(fixed_noise)
+            dist_orig_data = self.get_features(orig_data[:n_gen].to(device)).cpu()
+            dist_gen = self.get_features(generations.to(device)).cpu()
+            return calculate_frechet_distance(dist_orig_data.numpy(), dist_gen.numpy())
 
 def calculate_frechet_distance(distribution_1, distribution_2, eps=1e-6):
     mu1 = np.mean(distribution_1, axis=0)
@@ -80,6 +99,7 @@ def calculate_frechet_distance(distribution_1, distribution_2, eps=1e-6):
             np.trace(sigma2) - 2 * tr_covmean)
 
 def visualize_reconstructions(model, input_imgs, device):
+    torch.stack([input_imgs[i][0] for i in range(len(input_imgs))], dim=0)
     # Reconstruct images
     model.eval()
     with torch.no_grad():
@@ -88,30 +108,24 @@ def visualize_reconstructions(model, input_imgs, device):
     
     # Plotting
     imgs = torch.stack([input_imgs, reconst_imgs], dim=1).flatten(0,1)
-    grid = torchvision.utils.make_grid(imgs, nrow=4, normalize=False, range=(-1,1))
+    grid = torchvision.utils.make_grid(imgs, nrow=4, normalize=False)
     grid = grid.permute(1, 2, 0)
-    if len(input_imgs) == 4:
-        plt.figure(figsize=(10,10))
-    else:
-        plt.figure(figsize=(15,10))
+    plt.figure(figsize=(10,10))
     plt.title(f"Reconstructions")
     plt.imshow(grid)
     plt.axis('off')
     plt.show()
 
-def generate_images(model, n_imgs, device):
+def generate_images(model, n_imgs, device, latent_dim=32):
     # Generate images
     model.eval()
     with torch.no_grad():
-        generated_imgs = model.decoder(torch.randn([n_imgs, model.latent_dim]).to(device))
+        generated_imgs = model(torch.randn([n_imgs, latent_dim]).to(device))
     generated_imgs = generated_imgs.cpu()
     
-    grid = torchvision.utils.make_grid(generated_imgs, nrow=4, normalize=False, range=(-1,1))
+    grid = torchvision.utils.make_grid(generated_imgs, nrow=4, normalize=False)
     grid = grid.permute(1, 2, 0)
-    if len(input_imgs) == 4:
-        plt.figure(figsize=(10,10))
-    else:
-        plt.figure(figsize=(15,10))
+    plt.figure(figsize=(10,10))
     plt.title(f"Generations")
     plt.imshow(grid)
     plt.axis('off')

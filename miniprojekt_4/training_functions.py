@@ -1,3 +1,6 @@
+import torch
+import numpy as np
+from tqdm import tqdm
 
 def train_unet(model, train_loader, val_loader, optimizer, criterion, eval_fn, epochs=10, device='cuda', verbose=True):
     def corrupt(x, amount):
@@ -37,9 +40,8 @@ def train_unet(model, train_loader, val_loader, optimizer, criterion, eval_fn, e
 
     return loss_hist, train_eval_hist, val_eval_hist
 
-def train_vae(model, train_loader, val_loader, optimizer, criterion, eval_fn, epochs=10, device='cuda', verbose=True):
-    train_eval_hist = []
-    val_eval_hist = []
+def train_vae(model, train_loader, val_set, optimizer, loss_fn, eval_fn, epochs=10, device='cuda', verbose=True):
+    eval_hist = []
     loss_hist = []
     if verbose:
         rng = tqdm(range(epochs))
@@ -50,25 +52,29 @@ def train_vae(model, train_loader, val_loader, optimizer, criterion, eval_fn, ep
     model.train()
 
     for epoch in rng:
+        epoch_loss = []
         for x, _ in train_loader:
             x = x.to(device)  # Data on the GPU
-            pred, mean, log_var = model(x)
-            loss = criterion(pred, x, mean, log_var)  # How close is the output to the true 'clean' x?
+            out, means, log_var = model(x)
+            loss = loss_fn(x, out, means, log_var) 
+            epoch_loss.append(loss.item())
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            loss_hist.append(loss.item())
 
+        epoch_loss = np.mean(np.array(epoch_loss))
+        loss_hist.append(epoch_loss)
         model.eval()
-        train_eval_hist.append(eval_fn(model, train_loader, device))
-        val_eval_hist.append(eval_fn(model, val_loader, device))
+        eval_hist.append(eval_fn(model.decoder, val_set, device))
         model.train()
 
-    return loss_hist, train_eval_hist, val_eval_hist
+    return loss_hist, eval_hist
 
-def train_gan(generator, discriminator, train_loader, optimizer_G, optimizer_D, criterion, device, epochs=10, verbose=True):
+def train_gan(generator, discriminator, train_loader, val_loader, optimizer_G, optimizer_D, criterion, device, eval_fn, epochs=10, verbose=True):
     train_G_hist = []
+    eval_G_hist = []
     train_D_hist = []
+    eval_D_hist = []
     if verbose:
         rng = tqdm(range(epochs))
     else:
@@ -101,5 +107,9 @@ def train_gan(generator, discriminator, train_loader, optimizer_G, optimizer_D, 
 
         generator.eval()
         discriminator.eval()
+        eval_G_hist.append(eval_fn(generator, val_loader, device))
+        eval_D_hist.append(eval_fn(discriminator, val_loader, device))
+        generator.train()
+        discriminator.train()
 
-    return train_G_hist, train_D_hist
+    return train_G_hist, train_D_hist, eval_G_hist, eval_D_hist
