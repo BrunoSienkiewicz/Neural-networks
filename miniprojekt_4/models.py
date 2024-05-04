@@ -119,12 +119,14 @@ class VAE(nn.Module):
         return x_hat, mean, log_var
     
 class Generator(nn.Module):
-    def __init__(self, latent_dim, hidden_dim, output_dim, hidden_layers=2):
+    def __init__(self, latent_dim, hidden_dim, output_dim, image_shape, hidden_layers=2):
         super(Generator, self).__init__()
+        self.image_shape = image_shape
+        self.latent_dim = latent_dim
         self.fc = nn.Linear(latent_dim, hidden_dim)
         
         _layer_list = []
-        for _ in range(self.hidden_layers):
+        for _ in range(hidden_layers):
             _layer_list.append(nn.Linear(hidden_dim, hidden_dim))
             _layer_list.append(nn.BatchNorm1d(hidden_dim))
             _layer_list.append(nn.Dropout(0.3))
@@ -141,8 +143,8 @@ class Generator(nn.Module):
         for layer in self.hidden_layers:
             h = self.LeakyReLU(layer(h))
         
-        x_hat = torch.sigmoid(self.fc_3(h))
-        x_hat = x_hat.view([-1, 1, 28, 28])
+        x_hat = torch.sigmoid(self.fc_out(h))
+        x_hat = x_hat.view([-1] + list(self.image_shape))
         return x_hat
 
 class Discriminator(nn.Module):
