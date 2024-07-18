@@ -4,3 +4,12 @@ __pycache__/
 miniprojekt_3/test_all/
 miniprojekt_3/train/
 miniprojekt_4/trafic_32/
+
+*.pth
+*.pkl
+*.csv
+*.log
+*.txt
+*.w2v
+*.zip
+*.tar

@@ -130,3 +130,30 @@ def generate_images(model, n_imgs, device, latent_dim=32):
     plt.imshow(grid)
     plt.axis('off')
     plt.show()
+
+def generate_images_unet(net, n_gen=8, n_steps=50, device='cuda'):
+    pred_hist = []
+    step_hist = []
+    with torch.no_grad():
+        fixed_noise = torch.randn(n_gen, 3, 32, 32).to(device)
+        x = fixed_noise
+        for i in range(n_steps):
+            step_hist.append(x.detach().cpu()) 
+            pred = net(x)
+            pred_hist.append(pred.detach().cpu())
+            mix_factor = 1 / (n_steps - i)  
+            x = x * (1 - mix_factor) + pred * mix_factor  
+        return pred, pred_hist, step_hist
+
+def evaluate_unet(eval, model, orig_data, device, n_gen=100, n_steps=50):
+    with torch.no_grad():
+        fixed_noise = torch.randn(n_gen, 3, 32, 32).to(device)
+        x = model(fixed_noise)
+        for i in range(n_steps):
+            pred = model(x)
+            mix_factor = 1 / (n_steps - i) 
+            x = x * (1 - mix_factor) + pred * mix_factor  
+        dist_orig_data = eval.get_features(orig_data.to(device)).cpu()
+        dist_gen = eval.get_features(pred.to(device)).cpu()
+        return calculate_frechet_distance(dist_orig_data.numpy(), dist_gen.numpy())
+    
